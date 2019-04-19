@@ -6,7 +6,7 @@
 #include "scottoLeg.h"
 #include "scottoMotorInterface.h"
 
-//Length of Gait
+//Time of the gait
 uint16_t gaitPeriod = 2000;
 //Trajectory of the three motors on each leg
 float motor_1Front[] = {42,42,41,41,40,39,38,37,35,34,33,31,30,28,27,24,23,21,19,17,15,13,11,9,6,3,0,-1,-2,-2,-1.2497,1.2221,5.2152,10.4061,16.3742,22.636,28.6843,34.0291,38.2373,40.968};
@@ -24,7 +24,11 @@ int leg0[] = {1,2,3};//front left
 int leg1[] = {7,8,9};//back left
 int leg2[] = {12,11,10};//front right
 int leg3[] = {4,5,6};//back right
+
+//time used to track position in trajectory for each leg.
 uint16_t legTime[4];
+
+// min/maxes of all motors
 int motorMins[] = {850,859,865,159,864,156,860,157,861,863,861,861}; // 156 -> 861 for motor 12 (backwards)
 int motorMaxs[] = {159,159,159,869,158,860,156,863,160,157,156,156}; // NOTE: swapped min and max for 4, 5, 
 
@@ -35,6 +39,7 @@ void setup(){
    Serial.begin(9600);
    delay(500);
    
+   //Initialize all motors on all legs
    Legs[0] = scottoLeg(leg0[0],leg0[1],leg0[2],motorMins[leg0[0]-1],motorMaxs[leg0[0]-1],motorMins[leg0[1]-1],motorMaxs[leg0[1]-1],motorMins[leg0[2]-1],motorMaxs[leg0[2]-1]);
    Legs[1] = scottoLeg(leg1[0],leg1[1],leg1[2],motorMins[leg1[0]-1],motorMaxs[leg1[0]-1],motorMins[leg1[1]-1],motorMaxs[leg1[1]-1],motorMins[leg1[2]-1],motorMaxs[leg1[2]-1]);
    Legs[2] = scottoLeg(leg2[0],leg2[1],leg2[2],motorMins[leg2[0]-1],motorMaxs[leg2[0]-1],motorMins[leg2[1]-1],motorMaxs[leg2[1]-1],motorMins[leg2[2]-1],motorMaxs[leg2[2]-1]);
@@ -46,20 +51,19 @@ void setup(){
    legTime[1] = gaitPeriod/2;
    legTime[3] = gaitPeriod*3/4;
    
-   // Compute the time between each trajectory value
+   // Compute the time between each position in the trajectory
    timeBetweenGaitPos = (float)gaitPeriod/((float)(sizeof(motor_1Front)/sizeof(motor_1Front[0])-1));
    Serial.println("\nStarting in 2 seconds");
    delay(2000);
    Serial.println("starting...");
    stand();
-   delay(1000);
+   /*delay(1000);
    sit();
    delay(2000);
-   frontLegRoll();
+   frontLegRoll();*/
  }
 
 void loop(){
-  /*
   uint32_t startTime = millis();
   
   // Move each leg
@@ -72,18 +76,19 @@ void loop(){
   int incrementTime = millis() - startTime;
   for (int i = 0; i < 4; i ++)
     legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;
-    */
 }
 
+// Function to move a front leg to the position given a time in a gait cycle
 void moveFrontLeg(scottoLeg leg2move,uint16_t gaitTime)
 {
-  int gaitNum = floor((float)gaitTime/timeBetweenGaitPos);
+  int gaitNum = floor((float)gaitTime/timeBetweenGaitPos); // Find the 
   float command1 = interpolate(gaitTime,timeBetweenGaitPos*(float)gaitNum,timeBetweenGaitPos*(float)(gaitNum+1),motor_1Front[gaitNum],motor_1Front[gaitNum+1]);
   float command2 = interpolate(gaitTime,timeBetweenGaitPos*(float)gaitNum,timeBetweenGaitPos*(float)(gaitNum+1),motor_2Front[gaitNum],motor_2Front[gaitNum+1]);
   float command3 = interpolate(gaitTime,timeBetweenGaitPos*(float)gaitNum,timeBetweenGaitPos*(float)(gaitNum+1),motor_3Front[gaitNum],motor_3Front[gaitNum+1]);
   leg2move.moveAllDegree(command1,command2,command3);
 }
 
+// Function to move a back leg to the position given a time in a gait cycle
 void moveBackLeg(scottoLeg leg2move,uint16_t gaitTime)
 {
   int gaitNum = floor((float)gaitTime/timeBetweenGaitPos);
@@ -93,6 +98,7 @@ void moveBackLeg(scottoLeg leg2move,uint16_t gaitTime)
   leg2move.moveAllDegree(command1,command2,command3);
 }
 
+// Function to stand
 void stand()
 {
   float movespeed = 0.2; //degrees per millisecond
@@ -134,6 +140,7 @@ void stand()
 
 }
 
+// Function to lower legs to sit on body, then stow legs to get ready for roll
 void sit()
 {
   float movespeed = 0.05; //degrees per millisecond
@@ -172,6 +179,7 @@ void sit()
   moveSlowly(2,twoLegMotors,stowPos[0],movespeed);
 }
 
+// Function to use front legs to roll over
 void frontLegRoll()
 {
   float movespeed = 0.1; //degrees per millisecond
@@ -190,6 +198,7 @@ void frontLegRoll()
   moveSlowly(2,twoLegMotors,m3Goal,movespeed);
 }
 
+// Function to move motors slowly. the inputs are the number of motors to be moved, an array containing the motors to be moved, the desired position (in degrees), and the moving speed (degrees/millisecond)
 void moveSlowly(int numMotors,scottoMotorInterface* motors2move,float desPosition,float movespeed)
 {
   float tol = 0.01;
@@ -220,6 +229,7 @@ void moveSlowly(int numMotors,scottoMotorInterface* motors2move,float desPositio
   } 
 }
 
+// Interpolation function
 float interpolate(float val,float minIN,float maxIN,float minOUT, float maxOUT){
   return (val-minIN)*(maxOUT-minOUT)/(maxIN-minIN)+minOUT;
 }
