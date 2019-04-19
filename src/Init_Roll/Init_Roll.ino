@@ -3,12 +3,10 @@
 
 // import ax12 library to send dynamixel commands
 #include <ax12.h>
-#include <BioloidController.h>
-
-BioloidController bioloid = BioloidController(1000000);
 
 //Length of Gait
 uint16_t gaitPeriod = 2000;
+
 //Trajectory of the three motors on each leg
 float motor_1Front[] = {42,42,41,41,40,39,38,37,35,34,33,31,30,28,27,24,23,21,19,17,15,13,11,9,6,3,0,-1,-2,-2,-1.2497,1.2221,5.2152,10.4061,16.3742,22.636,28.6843,34.0291,38.2373,40.968};
 float motor_2Front[] = {-27,-27,-27,-27,-27,-28,-27,-27,-27,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-20.7816,-15.0265,-10.2009,-6.6958,-4.7951,-4.6528,-6.2804,-9.5461,-14.1853,-19.8221};
@@ -25,8 +23,6 @@ int leg1[] = {1,2,3}; uint16_t leg1Time; //front left
 int leg2[] = {7,8,9}; uint16_t leg2Time; //back left
 int leg3[] = {12,11,10}; uint16_t leg3Time; //front right
 int leg4[] = {4,5,6}; uint16_t leg4Time; //back right
-// int motorMins[] = {850,859,865,859,158,860,860,157,861,863,861,861}; // 156 -> 861 for motor 12 (backwards)
-// int motorMaxs[] = {159,159,159,159,864,156,156,863,160,157,156,156}; // NOTE: swapped min and max for 4, 5, 6
 
 int motorMins[] = {850,859,865,159,864,156,860,157,861,863,861,861}; // 156 -> 861 for motor 12 (backwards)
 int motorMaxs[] = {159,159,159,869,158,860,156,863,160,157,156,156}; // NOTE: swapped min and max for 4, 5, 6
@@ -65,6 +61,7 @@ void loop(){
   Serial.print(pos_2); Serial.print(", ");
   Serial.print(pos_3); Serial.println(";");
   
+  /*
   int digCommand = degree_to_digital(1,-85);
   SetPosition(1,digCommand);
   digCommand = degree_to_digital(2,100);
