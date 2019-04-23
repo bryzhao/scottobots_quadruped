@@ -8,6 +8,10 @@
 #include <ax12.h>
 #include "scottoLeg.h"
 #include "scottoMotorInterface.h"
+#include <Wire.h> 
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BNO055.h>
+#include <utility/imumaths.h>
 
 //Time of the gait
 uint16_t gaitPeriod = 2000;
@@ -51,11 +55,23 @@ int motorMaxs[] = {159,159,159,869,158,860,156,863,160,157,156,156}; // NOTE: sw
 float stowPos[] = {STOW_M1,STOW_M2,STOW_M3};
 float kickInitPos[] = {85,30,0};
 
+Adafruit_BNO055 bno = Adafruit_BNO055(55); // init object for IMU
+
 void setup(){
    //open serial port
    Serial.begin(9600);
    delay(500);
    
+   Serial.println("Orientation Sensor Test"); Serial.println("");
+   // Initialize the sensor
+   if(!bno.begin())
+   {
+     // There was a problem detecting the BNO055 ... check your connections
+     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
+   }
+   delay(1000);
+   bno.setExtCrystalUse(true);
+  
    //Initialize all motors on all legs
    Legs[0] = scottoLeg(leg0[0],leg0[1],leg0[2],motorMins[leg0[0]-1],motorMaxs[leg0[0]-1],motorMins[leg0[1]-1],motorMaxs[leg0[1]-1],motorMins[leg0[2]-1],motorMaxs[leg0[2]-1]);
    Legs[1] = scottoLeg(leg1[0],leg1[1],leg1[2],motorMins[leg1[0]-1],motorMaxs[leg1[0]-1],motorMins[leg1[1]-1],motorMaxs[leg1[1]-1],motorMins[leg1[2]-1],motorMaxs[leg1[2]-1]);
@@ -95,6 +111,9 @@ void loop(){
   
   uint32_t startTime = millis();
   
+  imu::Vector<3> euler = bno.getVector(Adafruit_BNO055::VECTOR_EULER); // retrieve euler angles from gyroscope, needs to be in loop
+  // access angles through euler.x(), euler.y(), euler.z() methods
+
   // move each leg
 //  for (int i = 0; i < 4; i++)
 //    moveFrontLeg(Legs[i],legTime[i]);
@@ -227,11 +246,6 @@ void stow()
   moveSlowly(2,twoLegMotors,stowPos[0],movespeed);
 }
 
-void walk()
-{
-  
-}
-
 // Function to use front legs to roll over
 void frontLegRoll()
 {
@@ -281,6 +295,8 @@ void moveSlowly(int numMotors,scottoMotorInterface* motors2move,float desPositio
     delay(1);
   } 
 }
+
+
 
 // Interpolation function
 float interpolate(float val,float minIN,float maxIN,float minOUT, float maxOUT){
