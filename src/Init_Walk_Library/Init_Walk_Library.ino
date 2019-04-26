@@ -22,7 +22,8 @@ uint16_t legTime[4];
 int motorMins[] = {850,859,865,159,864,156,860,157,861,863,861,861}; // 156 -> 861 for motor 12 (backwards)
 int motorMaxs[] = {159,159,159,869,158,860,156,863,160,157,156,156}; // NOTE: swapped min and max for 4, 5, 
 
-float stowPos[] = {85,65,80};
+float stowPos[] = {90,65,81};
+//float stowPos[] = {90,35,30};
 bool rightSideUp;
 int rollStep = 0;
 int sitStep = 0;
@@ -85,7 +86,7 @@ void setup(){
  }
 
 void loop(){
-  if (rightSideUp) // If the robot is right side up, do a belly roll
+  /*if (rightSideUp) // If the robot is right side up, do a belly roll
   {
     if (bellyRoll())// If the roll has finished, count the roll
       rollCount++;
@@ -95,11 +96,13 @@ void loop(){
     if (backRoll())// If the roll has finished, count the roll
     {
       rollCount++;
-      delay(1000);
     }
-  }
-  if (rollCount > 2)
+  }*/
+  if (bellyRoll())
+    rollCount++;
+  if (rollCount > 4)
     while(true);
+
   /*
   // Move each leg
   for (int i = 0; i < 4; i+=2)
@@ -140,6 +143,47 @@ bool bellyRoll(){
   sensors_event_t event;
   bno.getEvent(&event);
   float orientation = (float)event.orientation.z;
+  if (rollStep == 0)
+  {
+    if (orientation < 20 && orientation > -20){
+        for (int i = 0; i < 4;i+=2)
+        {
+          Legs[i].m2.moveToDegree(-35);
+          Legs[i].m3.moveToDegree(30);
+        }
+        for (int i = 0; i <4; i +=2)
+        {
+          Legs[i].m2.setSpeed(1);
+          Legs[i].m3.setSpeed(1);
+          Legs[i].m2.setDestinationDegree(-100);
+          Legs[i].m3.setDestinationDegree(0); 
+        }
+        rollStep = 1;
+      }
+  }
+  else
+  {
+    for (int i = 0; i < 4;i+=2)
+      {
+        if (Legs[i].stepAll())
+        {
+          Legs[i].m3.setSpeed(1);
+          Legs[i].m3.setDestinationDegree(-100);
+        }
+      }
+      if (orientation < -95)
+      {
+        rightSideUp = false;
+        rollStep = 0;
+        for (int i = 0; i < 4;i+=2)
+        {
+          Legs[i].m2.moveToDegree(-stowPos[1]);
+          Legs[i].m3.moveToDegree(stowPos[2]);
+        }
+        return true;
+      }
+  }
+  /*
   switch(rollStep) {
     case 0 :
       if (orientation < 20){
@@ -179,7 +223,7 @@ bool bellyRoll(){
         return true;
       }
       break;
-  }
+  }*/
   return false;
 }
 
@@ -187,6 +231,44 @@ bool backRoll(){
   sensors_event_t event;
   bno.getEvent(&event);
   float orientation = (float)event.orientation.z;
+  if (rollStep == 0)
+  {
+    for (int i = 1; i < 4;i+=2)
+        {
+          Legs[i].m2.moveToDegree(35);
+          Legs[i].m3.moveToDegree(-30);
+        }
+        for (int i = 1; i <4; i +=2)
+        {
+          Legs[i].m2.setSpeed(0.35);
+          Legs[i].m3.setSpeed(0.5);
+          Legs[i].m2.setDestinationDegree(100);
+          Legs[i].m3.setDestinationDegree(0); 
+        }
+        rollStep = 1;
+  }
+  else
+  {
+    for (int i = 1; i < 4;i+=2)
+      {
+        if (Legs[i].stepAll())
+        {
+          Legs[i].m3.setSpeed(0.5);
+          Legs[i].m3.setDestinationDegree(100);
+        }
+      }
+        if ((orientation < 85) && (orientation > -85))
+        {
+          rightSideUp = true;
+          rollStep = 0;
+          for (int i = 1; i < 4;i+=2)
+          {
+            Legs[i].m2.moveToDegree(stowPos[1]);
+            Legs[i].m3.moveToDegree(-stowPos[2]);
+          }
+          return true;
+        }
+  }/*
   switch(rollStep) {
     case 0 :
       if (orientation < -160 || orientation > 0){
@@ -203,6 +285,7 @@ bool backRoll(){
           Legs[i].m3.setDestinationDegree(0); 
         }
         rollStep = 1;
+        break;
       }
     case 1:
       for (int i = 1; i < 4;i+=2)
@@ -224,7 +307,8 @@ bool backRoll(){
           }
           return true;
         }
-  }
+        break;
+  }*/
   return false;
 }
 
@@ -374,7 +458,7 @@ void stand()
 // Function to lower legs to sit on body, then stow legs to get ready for roll
 void sit()
 {
-  float movespeed = 0.2; //degrees per millisecond
+  float movespeed = 0.5; //degrees per millisecond
   
   // Lift off ground with motor 2
   float m2Goal1 = 45;
@@ -384,7 +468,7 @@ void sit()
   moveSlowly(4,allLegMotors,m2Goal1,movespeed);
   
   //Set motor 3 position
-  movespeed = 0.2;
+  movespeed = 0.5;
   scottoMotorInterface twoLegMotors[2];
   twoLegMotors[0] = Legs[0].m3;
   twoLegMotors[1] = Legs[2].m3;

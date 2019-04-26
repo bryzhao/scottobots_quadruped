@@ -40,8 +40,8 @@ void scottoMotorInterface::moveToDigital(int command) {
   SetPosition(motorID,command);
   onStatus = true;
   lastCommand = command;
-  delay(2);
   lastMoveTime = millis();
+  delay(1);
 }
 
 int scottoMotorInterface::readDigital() {
