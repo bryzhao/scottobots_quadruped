@@ -1,3 +1,5 @@
+#include <EncodersAB.h>
+
 #include "scottoMotorInterface.h"
 
 scottoMotorInterface::scottoMotorInterface(){
@@ -7,6 +9,7 @@ scottoMotorInterface::scottoMotorInterface(int ID, int motorMin, int motorMax) {
   motorID = ID;
   minDigital = motorMin;
   maxDigital = motorMax;
+  relax();
 }
 
 float scottoMotorInterface::digital_to_degree(int digital_read) {
@@ -35,6 +38,10 @@ float scottoMotorInterface::radian_to_digital(float angle) {
 
 void scottoMotorInterface::moveToDigital(int command) {
   SetPosition(motorID,command);
+  onStatus = true;
+  lastCommand = command;
+  delay(2);
+  lastMoveTime = millis();
 }
 
 int scottoMotorInterface::readDigital() {
@@ -59,8 +66,45 @@ float scottoMotorInterface::readRadian() {
 
 void scottoMotorInterface::relax() {
   Relax(motorID);
+  onStatus = false;
 }
 
 float scottoMotorInterface::interpolate(float val,float minIN,float maxIN,float minOUT, float maxOUT){
   return (val-minIN)*(maxOUT-minOUT)/(maxIN-minIN)+minOUT;
+}
+
+void scottoMotorInterface::setSpeed(float speedIn){
+  movespeed = speedIn;
+}
+
+void scottoMotorInterface::setDestinationDigital(int inDest){
+  destination = inDest;
+  lastMoveTime = millis();
+}
+
+void scottoMotorInterface::setDestinationDegree(float inDest){
+  destination = degree_to_digital(inDest);
+  lastMoveTime = millis();
+}
+
+void scottoMotorInterface::setDestinationRadian(float inDest){
+  destination = radian_to_digital(inDest);
+  lastMoveTime = millis();
+}
+
+bool scottoMotorInterface::step(){
+  float tol = 0.01;
+  if (!onStatus){
+    lastCommand = readDigital();
+    lastMoveTime = millis();
+  }
+  uint16_t moveTime = millis() - lastMoveTime;
+  lastMoveTime = millis();
+  float commandChange = constrain((float)destination - lastCommand,-movespeed*(float)moveTime,movespeed*(float)moveTime);
+  lastCommand = lastCommand+commandChange;
+  moveToDigital(round(lastCommand));
+  if (abs(lastCommand-destination) < tol)
+    return true;
+  else
+    return false;
 }

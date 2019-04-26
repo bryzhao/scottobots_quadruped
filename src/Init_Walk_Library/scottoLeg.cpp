@@ -31,3 +31,7 @@ void scottoLeg::relaxAll() {
 	m2.relax();
 	m3.relax();
 }
+
+bool scottoLeg::stepAll(){
+	return (((m1.step()) && (m2.step())) && (m3.step()));
+} 

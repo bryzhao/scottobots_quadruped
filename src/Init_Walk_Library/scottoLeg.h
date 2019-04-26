@@ -10,6 +10,7 @@ max is the raw motor reading when the motor is pulled all the way to the other s
 
 class scottoLeg
 {
+private:
 public:
         // Top motor on the leg
 	scottoMotorInterface m1;
@@ -29,5 +30,7 @@ public:
 	void moveAllRadian(float command1, float command2, float command3);
         // Relax all motors
         void relaxAll();
+        // steps all motors at the desired speed towards the destinations. Return true if destinations reached
+        bool stepAll();
 };
 #endif
