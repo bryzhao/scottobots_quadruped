@@ -139,11 +139,11 @@ void setup(){
  }
 
 void loop(){  
-  if (bellyRoll()) {
-    rollCount++;
-  }
+//  if (bellyRoll()) {
+//    rollCount++;
+//  }
   
-  /*
+
   if (millis() - routineTime > 14000) {
     if (bellyRoll()) {
       rollCount++;
@@ -174,7 +174,6 @@ void loop(){
     walk();
   }
  
-  */
   
   // test sitting
 //  if (sitCommanded) {
@@ -272,24 +271,14 @@ bool bellyRoll(){
         }
         for (int i = 0; i <4; i +=2)
         {
-          Legs[i].m2.setSpeed(1);
-          Legs[i].m3.setSpeed(1);
-          Legs[i].m2.setDestinationDegree(-100);
-          Legs[i].m3.setDestinationDegree(0); 
+          Legs[i].m2.moveToDegree(-100);
+          Legs[i].m3.moveToDegree(0); 
         }
         rollStep = 1;
       }
   }
   else
   {
-    for (int i = 0; i < 4;i+=2)
-      {
-        if (Legs[i].stepAll())
-        {
-          Legs[i].m3.setSpeed(1);
-          Legs[i].m3.setDestinationDegree(-100);
-        }
-      }
       if (orientation < -95)
       {
         rightSideUp = false;
