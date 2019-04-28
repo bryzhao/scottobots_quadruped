@@ -5,10 +5,7 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
-#include <SPI.h>
-#include <SD.h>
 
-File myFile;
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 scottoLeg Legs[4];
 
@@ -66,16 +63,6 @@ void setup(){
    //open serial port
    Serial.begin(9600);
   
-    // set up sd card
-   Serial.print("Initializing SD card...");
-
-  if (!SD.begin(4)) 
-  {
-    Serial.println("SD initialization failed!");
-    while (1);
-  }
-  Serial.println("SD initialization done.");
-  
    // Set up IMU
    Serial.println("\n Starting IMU \n");
    while(!bno.begin())
@@ -119,22 +106,8 @@ void setup(){
    
    Serial.println("\nStarting in 2 seconds");
    delay(2000);
-   Serial.println("starting...");
-   //stand();
-   //delay(1000);
-   // sit();
-   //delay(2000);
-   //frontLegRoll();
-   delay(1000);
-   //Legs[0].m3.moveSpeedDegree(-90,1000);
-   //bellyRoll();
-//   delay(5000);
-  while (!sitTest());
-  delay(1000);
-  while (!stowTest());
-  delay(1000);
-  /* while (!standTest());
-  delay(3000); */
+  while (!standTest());
+  delay(3000);
   routineTime = millis(); // start of routine
  }
 
@@ -142,8 +115,7 @@ void loop(){
 //  if (bellyRoll()) {
 //    rollCount++;
 //  }
-  
-
+ 
   if (millis() - routineTime > 14000) {
     if (bellyRoll()) {
       rollCount++;
@@ -162,57 +134,14 @@ void loop(){
       standTest(); // stop rolling
   }
   else if (millis() - routineTime > 12000) {
-    Serial.println("stowing");
     stowTest();
   }
   else if (millis() - routineTime > 10000) {
-    Serial.println("sitting");
     sitTest();
   }
   else{
-    Serial.println("walking");
     walk();
-  }
- 
-  
-  // test sitting
-//  if (sitCommanded) {
-//    sitStowTest();
-//    Serial.println("sitting...");
-//  }
-//  else {
-//    Serial.println("not sitting!");
-//  }
-
-  /*if (rightSideUp) // If the robot is right side up, do a belly roll
-  {
-    if (bellyRoll())// If the roll has finished, count the roll
-      rollCount++;
-  }
-  else // If the robot is on its back, do a back roll
-  {
-    if (backRoll())// If the roll has finished, count the roll
-    {
-      rollCount++;
-    }
-  }*/
-//  if (bellyRoll())
-//    rollCount++;
-//  if (rollCount > 4)
-//    while(true);
-
-  /*
-  // Move each leg
-  for (int i = 0; i < 4; i+=2)
-    moveFrontLeg(Legs[i],legTime[i]);
-  for (int i = 1; i < 4; i+=2)
-    moveBackLeg(Legs[i],legTime[i]);
- 
- // Increment each leg's time in the gait cycle 
-  int incrementTime = millis() - startTime;
-  for (int i = 0; i < 4; i ++)
-    legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;*/
-  
+  } 
 }
 
 // Function to move a front leg to the position given a time in a gait cycle
@@ -259,8 +188,6 @@ bool bellyRoll(){
   sensors_event_t event;
   bno.getEvent(&event);
   float orientation = (float)event.orientation.z;
-  Serial.print("orientation: );
-  Serial.println(orientation);
   if (rollStep == 0)
   {
     if (orientation < 20 && orientation > -20){
@@ -277,8 +204,7 @@ bool bellyRoll(){
         rollStep = 1;
       }
   }
-  else
-  {
+  else {
       if (orientation < -95)
       {
         rightSideUp = false;
@@ -291,47 +217,6 @@ bool bellyRoll(){
         return true;
       }
   }
-  /*
-  switch(rollStep) {
-    case 0 :
-      if (orientation < 20){
-        for (int i = 0; i < 4;i+=2)
-        {
-          Legs[i].m2.moveToDegree(-35);
-          Legs[i].m3.moveToDegree(30);
-        }
-        for (int i = 0; i <4; i +=2)
-        {
-          Legs[i].m2.setSpeed(0.25);
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m2.setDestinationDegree(-100);
-          Legs[i].m3.setDestinationDegree(0); 
-        }
-        rollStep = 1;
-      }
-      break;
-    case 1:
-      for (int i = 0; i < 4;i+=2)
-      {
-        if (Legs[i].stepAll())
-        {
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m3.setDestinationDegree(-100);
-        }
-      }
-      if (orientation < -95)
-      {
-        rightSideUp = false;
-        rollStep = 0;
-        for (int i = 0; i < 4;i+=2)
-        {
-          Legs[i].m2.moveToDegree(-stowPos[1]);
-          Legs[i].m3.moveToDegree(stowPos[2]);
-        }
-        return true;
-      }
-      break;
-  }*/
   return false;
 }
 
@@ -542,51 +427,6 @@ bool standTest()
   return false;
 }
 
-
-// Function to stand
-/*
-void stand(float frontM1Goal, float backM1Goal, float m2Goal1, float m2Goal2, float m3Goal)
-{
-  float movespeed = 0.2; //degrees per millisecond
-  
-  // Start by moving motor 1 slowly to the middle of the walking gait
-  float frontM1Goal = 0;
-  float backM1Goal = 0;
-  float m2Goal1 = 0;
-  float m2Goal2 = 0;
-  float m3Goal = 0;
-  for (int i = 0; i < (sizeof(motor_1Front)/sizeof(motor_1Front[0]));i++)
-  {
-    frontM1Goal += motor_1Front[i];
-    backM1Goal += motor_1Back[i];
-    m2Goal2 = min(m2Goal2,motor_2Front[i]);
-    m2Goal1 = max(m2Goal1,motor_2Front[i]);
-    m3Goal = min(m3Goal,motor_3Front[i]);
-    m2Goal1 = max(m2Goal1,motor_2Back[i]);
-    m2Goal2 = min(m2Goal2,motor_2Back[i]);
-    m3Goal = min(m3Goal,motor_3Back[i]);
-  }
-  frontM1Goal = frontM1Goal/(float)(sizeof(motor_1Front)/sizeof(motor_1Front[0]));
-  backM1Goal = backM1Goal/(float)(sizeof(motor_1Front)/sizeof(motor_1Front[0]));
-  scottoMotorInterface motors2move[] = {Legs[0].m1,Legs[2].m1};
-  
-  moveSlowly(2,motors2move,frontM1Goal,movespeed);
-  motors2move[0] = Legs[1].m1;
-  motors2move[1] = Legs[3].m1;
-  moveSlowly(2,motors2move,backM1Goal,movespeed);
-  scottoMotorInterface motors2move2[4];
-  for (int i = 0; i <4;i++)
-    motors2move2[i] = Legs[i].m2;
-  moveSlowly(4,motors2move2,m2Goal1,movespeed);
-  for (int i = 0; i <4;i++)
-    motors2move2[i] = Legs[i].m3;
-  moveSlowly(4,motors2move2,m3Goal,movespeed);
-  for (int i = 0; i <4;i++)
-    motors2move2[i] = Legs[i].m2;
-  moveSlowly(4,motors2move2,m2Goal2,movespeed);
-
-} */
-
 bool sitTest()
 {
   float neutralPos = 0;  
@@ -642,26 +482,7 @@ bool stowTest()
     }
     stowStep = 0;
     return true;
-  }
-    
-    /*
-    for (int i=0;i<4;i+=2)
-    {
-      Legs[i].m1.setSpeed(0.05);
-      Legs[i].m1.setDestinationDegree(-stowPos[0]);
-    }
-    for (int i=1;i<4;i+=2)
-    {
-      Legs[i].m1.setSpeed(0.05);
-      Legs[i].m1.setDestinationDegree(stowPos[0]);
-    }
-    for (int i=0;i<4;i++) {
-        if (Legs[i].stepAll()) {
-        sitCommanded = false;
-        return true;
-        }
-     }
-  }  */  
+  } 
   return false; // default case
 }
 
