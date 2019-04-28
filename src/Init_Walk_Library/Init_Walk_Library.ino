@@ -74,14 +74,15 @@ float m2Goal2 = 0;
 float m3Goal = 0;
 
 void setup(){
-
    //open serial port
    Serial.begin(9600);
-  
+   SD.begin(4);
+   myFile = SD.open("test.txt", FILE_WRITE);
    // Set up IMU
    Serial.println("\n Starting IMU \n");
    while(!bno.begin())
      Serial.println(".");
+   Serial.println("here");
    bno.setExtCrystalUse(true);
    sensors_event_t event;
    bno.getEvent(&event);
@@ -121,7 +122,7 @@ void setup(){
    
    Serial.println("\nStarting in 2 seconds");
    delay(2000);
-  while (!standTest());
+  //while (!standTest());
   delay(3000);
   routineTime = millis(); // start of routine
  }
@@ -130,33 +131,35 @@ void loop(){
 //  if (bellyRoll()) {
 //    rollCount++;
 //  }
-writetoCard();
  
-  if (millis() - routineTime > 14000) {
-    if (bellyRoll()) {
-      rollCount++;
-      Serial.print("rollCount: ");
-      Serial.println(rollCount);
+  if (millis() - routineTime > 4000) {
+    writetoCard();
+    if (rightSideUp)
+    {
+      if (bellyRoll()) {
+        rollCount++;
+      }
     }
-    if (rollCount > 4) {
-      standTest(); // stop rolling
+    else
+    {
+      if (backRoll()) {
+        rollCount++;
+      }
+    }
+    if (rollCount > 8) {
+      //standTest(); // stop rolling
+      myFile.close();
       while(1);
     }
   }
-  else if (millis() - routineTime > 14000) {
-    if (bellyRoll())
-      rollCount++;
-    if (rollCount > 4)
-      standTest(); // stop rolling
-  }
-  else if (millis() - routineTime > 12000) {
+  else if (millis() - routineTime > 2000) {
     stowTest();
   }
-  else if (millis() - routineTime > 10000) {
+  else if (millis() - routineTime > 1000) {
     sitTest();
   }
   else{
-    walk();
+    //walk();
   } 
 }
 
@@ -203,7 +206,6 @@ void walk() {
 void walk() {
   // Increment each leg's time in the gait cycle 
   uint16_t incrementTime = millis() - lastWalkTime;
-  Serial.print("incrementTime: ");
   Serial.println(incrementTime);
   for (int i = 0; i < 4; i ++) {
     legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;
@@ -260,30 +262,23 @@ bool backRoll(){
   float orientation = (float)event.orientation.z;
   if (rollStep == 0)
   {
-    for (int i = 1; i < 4;i+=2)
+    if (orientation < -160 || orientation > 160)
+    {
+      for (int i = 1; i < 4;i+=2)
         {
           Legs[i].m2.moveToDegree(35);
           Legs[i].m3.moveToDegree(-30);
         }
         for (int i = 1; i <4; i +=2)
         {
-          Legs[i].m2.setSpeed(0.35);
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m2.setDestinationDegree(100);
-          Legs[i].m3.setDestinationDegree(0); 
+          Legs[i].m2.moveToDegree(100);
+          Legs[i].m3.moveToDegree(0); 
         }
         rollStep = 1;
+    }
   }
   else
   {
-    for (int i = 1; i < 4;i+=2)
-      {
-        if (Legs[i].stepAll())
-        {
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m3.setDestinationDegree(100);
-        }
-      }
         if ((orientation < 85) && (orientation > -85))
         {
           rightSideUp = true;
@@ -295,47 +290,7 @@ bool backRoll(){
           }
           return true;
         }
-  }/*
-  switch(rollStep) {
-    case 0 :
-      if (orientation < -160 || orientation > 0){
-        for (int i = 1; i < 4;i+=2)
-        {
-          Legs[i].m2.moveToDegree(35);
-          Legs[i].m3.moveToDegree(-30);
-        }
-        for (int i = 1; i <4; i +=2)
-        {
-          Legs[i].m2.setSpeed(0.25);
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m2.setDestinationDegree(100);
-          Legs[i].m3.setDestinationDegree(0); 
-        }
-        rollStep = 1;
-        break;
-      }
-    case 1:
-      for (int i = 1; i < 4;i+=2)
-      {
-        if (Legs[i].stepAll())
-        {
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m3.setDestinationDegree(100);
-        }
-      }
-        if ((orientation < 85) && (orientation > -85))
-        {
-          rightSideUp = true;
-          rollStep = 0;
-          for (int i = 1; i < 4;i+=2)
-          {
-            Legs[i].m2.moveToDegree(stowPos[1]);
-            Legs[i].m3.moveToDegree(-stowPos[2]);
-          }
-          return true;
-        }
-        break;
-  }*/
+  }
   return false;
 }
 
@@ -563,6 +518,7 @@ void sit()
 
 void writetoCard(){
   int Speed,Load;
+  myFile.print(millis()); myFile.print(", ");
   for(int i = 0; i < 4; i ++)
   {
     Speed = ax12GetRegister(Legs[i].m1.motorID,38,2);
@@ -583,3 +539,4 @@ void writetoCard(){
   myFile.print("\n");
 
   }
+
