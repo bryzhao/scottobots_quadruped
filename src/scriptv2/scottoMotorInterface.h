@@ -13,12 +13,13 @@ class scottoMotorInterface
 private:
 	int minDigital;
 	int maxDigital;
+	int motorID;
 	float movespeed; // speed to move motors when moveslowlyfunction used;
 	
 	int16_t lastMoveTime;
 public:
 	bool onStatus; // is the motor powered or not
-        int motorID;
+
 	float lastCommand; // last command sent to the motor. Should roughly correspond to the motors actual position
 
         int destination; // motor position to go to slowly

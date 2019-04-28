@@ -5,9 +5,6 @@
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BNO055.h>
 #include <utility/imumaths.h>
-#include <SPI.h>
-#include <SD.h>
-File myFile;
 
 Adafruit_BNO055 bno = Adafruit_BNO055(55);
 scottoLeg Legs[4];
@@ -38,7 +35,6 @@ uint16_t standTime = 0;
 uint16_t sitTime = 0;
 uint16_t stowTime = 0;
 uint16_t routineTime = 0;
-uint16_t lastWalkTime = 0;
 
 bool standCommanded = true;
 bool sitCommanded = true;
@@ -47,24 +43,13 @@ bool walkCommanded = true;
 //Time of the gait
 uint16_t gaitPeriod = 1500;
 //Trajectory of the three motors on each leg
-/*
 float motor_1Front[] = {42,42,41,41,40,39,38,37,35,34,33,31,30,28,27,24,23,21,19,17,15,13,11,9,6,3,0,-1,-2,-2,-1.2497,1.2221,5.2152,10.4061,16.3742,22.636,28.6843,34.0291,38.2373,40.968};
 float motor_2Front[] = {-27,-27,-27,-27,-27,-28,-27,-27,-27,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-20.7816,-15.0265,-10.2009,-6.6958,-4.7951,-4.6528,-6.2804,-9.5461,-14.1853,-19.8221};
 float motor_3Front[] = {-41,-41,-43,-44,-46,-47,-48,-50,-52,-53,-55,-57,-58,-60,-61,-62,-63,-64,-64,-65,-65,-66,-66,-66,-67,-67,-67,-67,-67,-67,-67,-64.1111,-61.2222,-58.3333,-55.4444,-52.5556,-49.6667,-46.7778,-43.8889,-41};
 float motor_1Back[] = {-40.968,-38.2373,-34.0291,-28.6843,-22.636,-16.3742,-10.4061,-5.2152,-1.2221,1.2497,2,2,1,0,-3,-6,-9,-11,-13,-15,-17,-19,-21,-23,-24,-27,-28,-30,-31,-33,-34,-35,-37,-38,-39,-40,-41,-41,-42,-42};
 float motor_2Back[] = {-19.8221,-14.1853,-9.5461,-6.2804,-4.6528,-4.7951,-6.6958,-10.2009,-15.0265,-20.7816,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-26,-27,-27,-27,-28,-27,-27,-27,-27,-27};
 float motor_3Back[] = {-41,-43.8889,-46.7778,-49.6667,-52.5556,-55.4444,-58.3333,-61.2222,-64.1111,-67,-67,-67,-67,-67,-67,-67,-66,-66,-66,-65,-65,-64,-64,-63,-62,-61,-60,-58,-57,-55,-53,-52,-50,-48,-47,-46,-44,-43,-41,-41};
-*/
-
 float timeBetweenGaitPos;
-
-// trajectory generated from simulation
-float motor_1Front[] = {38.6757,37.1323,35.5234,33.8472,32.1027,30.2888,28.4053,26.4524,24.431,22.3427,20.1899,17.9759,15.705,13.3824,11.0141,8.6072,6.1692,3.7086,1.2343,-1.2447,-3.719,-6.1795,-8.6173,-11.0242,-12.8043,-12.8043,-12.8043,-10.4258,-0.62505,9.2121,18.5349,26.9471,34.2726,40.5154,40.5154,40.5154,40.5154,39.0515};
-float motor_2Front[] = {-41.6261,-40.8398,-40.2284,-39.7561,-39.3967,-39.1298,-38.9387,-38.8097,-38.7307,-38.6914,-38.6824,-38.6956,-38.7235,-38.7598,-38.7988,-38.8358,-38.8669,-38.8893,-38.9009,-38.9009,-38.8892,-38.8668,-38.8356,-38.7986,-37.0201,-30.4694,-24.3897,-19.4093,-19.6457,-19.4601,-18.95,-18.4036,-18.2254,-18.8857,-25.4637,-32.7784,-41.624,-41.8556};
-float motor_3Front[] = {-34.6481,-37.3827,-39.7843,-41.9095,-43.7985,-45.4807,-46.9791,-48.3115,-49.4926,-50.5344,-51.4468,-52.2385,-52.9164,-53.4868,-53.9545,-54.3238,-54.5978,-54.7791,-54.8693,-54.8691,-54.7786,-54.5969,-54.3224,-53.9527,-56.1426,-65.3466,-73.477,-80.3293,-81.0083,-80.4824,-78.7016,-75.5115,-70.6671,-63.8026,-55.401,-45.4553,-32.6083,-33.9033};
-float motor_1Back[] = {9.8251,7.4018,4.9515,2.483,0.0052149,-2.4726,-4.9412,-7.3915,-9.815,-12.2036,-14.5498,-16.8473,-19.0903,-21.2741,-23.3951,-25.4502,-27.4375,-29.3558,-31.2044,-32.9836,-34.6938,-36.3362,-37.9121,-39.4233,-40.5154,-40.5154,-40.5154,-39.0515,-32.5453,-24.9427,-16.2778,-6.7812,3.1013,12.8042,12.8043,12.8043,12.8043,10.4258};
-float motor_2Back[] = {-38.8176,-38.8521,-38.8792,-38.8965,-38.9024,-38.8965,-38.8793,-38.8523,-38.8178,-38.7793,-38.741,-38.7081,-38.6867,-38.6837,-38.7067,-38.7646,-38.8672,-39.0257,-39.2528,-39.5637,-39.9767,-40.5148,-41.2084,-42.1001,-40.3747,-31.8053,-24.6101,-18.6135,-18.2108,-18.5228,-19.0948,-19.5445,-19.625,-19.2943,-25.1317,-31.257,-37.8877,-38.8082};
-float motor_3Back[] = {-54.1497,-54.4714,-54.6992,-54.8352,-54.8805,-54.8355,-54.7,-54.4725,-54.1512,-53.7332,-53.2147,-52.5913,-51.8573,-51.0062,-50.0302,-48.9202,-47.665,-46.2517,-44.6639,-42.8815,-40.8787,-38.6211,-36.0615,-33.131,-34.476,-46.8144,-56.5207,-65.7357,-72.0504,-76.453,-79.2713,-80.7277,-80.9521,-79.9662,-72.5068,-64.2638,-54.8907,-54.0543};
 
 // angles for standing position
 float frontM1Goal = 0;
@@ -86,7 +71,7 @@ void setup(){
    sensors_event_t event;
    bno.getEvent(&event);
    delay(100);
-   rightSideUp = orientationCheck;
+   rightSideUp = orientationCheck();
    
    //Initialize all motors on all legs
    Legs[0] = scottoLeg(leg0[0],leg0[1],leg0[2],motorMins[leg0[0]-1],motorMaxs[leg0[0]-1],motorMins[leg0[1]-1],motorMaxs[leg0[1]-1],motorMins[leg0[2]-1],motorMaxs[leg0[2]-1]);
@@ -121,17 +106,19 @@ void setup(){
    
    Serial.println("\nStarting in 2 seconds");
    delay(2000);
+   Serial.println("starting...");
+   delay(1000);
+  //while (!sitTest());
+  //delay(1000);
+  //while (!stowTest());
+  //delay(1000);
   while (!standTest());
   delay(3000);
   routineTime = millis(); // start of routine
  }
 
 void loop(){  
-//  if (bellyRoll()) {
-//    rollCount++;
-//  }
-writetoCard();
- 
+  /*
   if (millis() - routineTime > 14000) {
     if (bellyRoll()) {
       rollCount++;
@@ -150,15 +137,59 @@ writetoCard();
       standTest(); // stop rolling
   }
   else if (millis() - routineTime > 12000) {
+    Serial.println("stowing");
     stowTest();
   }
   else if (millis() - routineTime > 10000) {
+    Serial.println("sitting");
     sitTest();
   }
   else{
+    Serial.println("walking");
     walk();
-  } 
+  }
+ */
+  
+  // test sitting
+//  if (sitCommanded) {
+//    sitStowTest();
+//    Serial.println("sitting...");
+//  }
+//  else {
+//    Serial.println("not sitting!");
+//  }
+
+  /*if (rightSideUp) // If the robot is right side up, do a belly roll
+  {
+    if (bellyRoll())// If the roll has finished, count the roll
+      rollCount++;
+  }
+  else // If the robot is on its back, do a back roll
+  {
+    if (backRoll())// If the roll has finished, count the roll
+    {
+      rollCount++;
+    }
+  }*/
+//  if (bellyRoll())
+//    rollCount++;
+//  if (rollCount > 4)
+//    while(true);
+
+  /*
+  // Move each leg
+  for (int i = 0; i < 4; i+=2)
+    moveFrontLeg(Legs[i],legTime[i]);
+  for (int i = 1; i < 4; i+=2)
+    moveBackLeg(Legs[i],legTime[i]);
+ 
+ // Increment each leg's time in the gait cycle 
+  int incrementTime = millis() - startTime;
+  for (int i = 0; i < 4; i ++)
+    legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;*/
+  
 }
+/*
 
 // Function to move a front leg to the position given a time in a gait cycle
 void moveFrontLeg(scottoLeg leg2move,uint16_t gaitTime)
@@ -179,7 +210,7 @@ void moveBackLeg(scottoLeg leg2move,uint16_t gaitTime)
   float command3 = interpolate(gaitTime,timeBetweenGaitPos*(float)gaitNum,timeBetweenGaitPos*(float)(gaitNum+1),motor_3Back[gaitNum],motor_3Back[gaitNum+1]);
   leg2move.moveAllDegree(command1,command2,command3);
 }
-/*
+
 void walk() {
   uint16_t startTime = millis();
 
@@ -198,30 +229,14 @@ void walk() {
     for (int i = 0; i < 4; i ++) {
       legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;
     }
-}*/
-
-void walk() {
-  // Increment each leg's time in the gait cycle 
-  uint16_t incrementTime = millis() - lastWalkTime;
-  Serial.print("incrementTime: ");
-  Serial.println(incrementTime);
-  for (int i = 0; i < 4; i ++) {
-    legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;
-  }
-  // Move each leg
-    for (int i = 0; i < 4; i+=2) {
-      moveFrontLeg(Legs[i],legTime[i]);
-    }
-    for (int i = 1; i < 4; i+=2) {
-      moveBackLeg(Legs[i],legTime[i]);
-    }
-    lastWalkTime = millis();
 }
 
 bool bellyRoll(){
   sensors_event_t event;
   bno.getEvent(&event);
   float orientation = (float)event.orientation.z;
+  Serial.print("orientation: );
+  Serial.println(orientation);
   if (rollStep == 0)
   {
     if (orientation < 20 && orientation > -20){
@@ -238,7 +253,8 @@ bool bellyRoll(){
         rollStep = 1;
       }
   }
-  else {
+  else
+  {
       if (orientation < -95)
       {
         rightSideUp = false;
@@ -295,47 +311,7 @@ bool backRoll(){
           }
           return true;
         }
-  }/*
-  switch(rollStep) {
-    case 0 :
-      if (orientation < -160 || orientation > 0){
-        for (int i = 1; i < 4;i+=2)
-        {
-          Legs[i].m2.moveToDegree(35);
-          Legs[i].m3.moveToDegree(-30);
-        }
-        for (int i = 1; i <4; i +=2)
-        {
-          Legs[i].m2.setSpeed(0.25);
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m2.setDestinationDegree(100);
-          Legs[i].m3.setDestinationDegree(0); 
-        }
-        rollStep = 1;
-        break;
-      }
-    case 1:
-      for (int i = 1; i < 4;i+=2)
-      {
-        if (Legs[i].stepAll())
-        {
-          Legs[i].m3.setSpeed(0.5);
-          Legs[i].m3.setDestinationDegree(100);
-        }
-      }
-        if ((orientation < 85) && (orientation > -85))
-        {
-          rightSideUp = true;
-          rollStep = 0;
-          for (int i = 1; i < 4;i+=2)
-          {
-            Legs[i].m2.moveToDegree(stowPos[1]);
-            Legs[i].m3.moveToDegree(-stowPos[2]);
-          }
-          return true;
-        }
-        break;
-  }*/
+  }
   return false;
 }
 
@@ -461,6 +437,8 @@ bool standTest()
   return false;
 }
 
+
+
 bool sitTest()
 {
   float neutralPos = 0;  
@@ -490,7 +468,7 @@ bool sitTest()
   }
   return false;
 }
-
+*/
 bool stowTest()
 {
   if (stowStep == 0) {
@@ -516,70 +494,8 @@ bool stowTest()
     }
     stowStep = 0;
     return true;
-  } 
+  }
+    
   return false; // default case
 }
-
-/*
-// Function to lower legs to sit on body, then stow legs to get ready for roll
-void sit()
-{
-  float movespeed = 0.5; //degrees per millisecond
-  
-  // Lift off ground with motor 2
-  float m2Goal1 = 45;
-  scottoMotorInterface allLegMotors[4];
-  for (int i = 0; i <4;i++)
-    allLegMotors[i] = Legs[i].m2;
-  moveSlowly(4,allLegMotors,m2Goal1,movespeed);
-  
-  //Set motor 3 position
-  movespeed = 0.5;
-  scottoMotorInterface twoLegMotors[2];
-  twoLegMotors[0] = Legs[0].m3;
-  twoLegMotors[1] = Legs[2].m3;
-  moveSlowly(2,twoLegMotors,stowPos[2],movespeed);
-  twoLegMotors[0] = Legs[1].m3;
-  twoLegMotors[1] = Legs[3].m3;
-  moveSlowly(2,twoLegMotors,-stowPos[2],movespeed);
-  
-  //Set motor 2 position
-  twoLegMotors[0] = Legs[0].m2;
-  twoLegMotors[1] = Legs[2].m2;
-  moveSlowly(2,twoLegMotors,-stowPos[1],movespeed);
-  twoLegMotors[0] = Legs[1].m2;
-  twoLegMotors[1] = Legs[3].m2;
-  moveSlowly(2,twoLegMotors,stowPos[1],movespeed);
-  
-  movespeed = 0.05;
-  //Set motor 1 position
-  twoLegMotors[0] = Legs[0].m1;
-  twoLegMotors[1] = Legs[2].m1;
-  moveSlowly(2,twoLegMotors,-stowPos[0],movespeed);
-  twoLegMotors[0] = Legs[1].m1;
-  twoLegMotors[1] = Legs[3].m1;
-  moveSlowly(2,twoLegMotors,stowPos[0],movespeed);
-} */
-
-void writetoCard(){
-  int Speed,Load;
-  for(int i = 0; i < 4; i ++)
-  {
-    Speed = ax12GetRegister(Legs[i].m1.motorID,38,2);
-    Load = ax12GetRegister(Legs[i].m1.motorID,40,2);
-    myFile.print(Speed); myFile.print(", ");
-    myFile.print(Load); myFile.print(", ");
-    
-    Speed = ax12GetRegister(Legs[i].m2.motorID,38,2);
-    Load = ax12GetRegister(Legs[i].m2.motorID,40,2);
-    myFile.print(Speed); myFile.print(", ");
-    myFile.print(Load); myFile.print(", ");
-    
-    Speed = ax12GetRegister(Legs[i].m3.motorID,38,2);
-    Load = ax12GetRegister(Legs[i].m3.motorID,40,2);
-    myFile.print(Speed); myFile.print(", ");
-    myFile.print(Load); myFile.print(", ");
-  }
-  myFile.print("\n");
-
-  }
+*/
