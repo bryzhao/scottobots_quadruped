@@ -28,6 +28,8 @@ int motorMaxs[] = {159,159,159,869,158,860,156,863,160,157,156,156}; // NOTE: sw
 float stowPos[] = {90,65,81};
 //float stowPos[] = {90,35,30};
 bool rightSideUp;
+bool needToInitializeRoll = true;
+float orientationOffset = 0;
 int rollStep = 0;
 int sitStep = 0;
 int standStep = 0;
@@ -39,6 +41,7 @@ uint16_t sitTime = 0;
 uint16_t stowTime = 0;
 uint16_t routineTime = 0;
 uint16_t lastWalkTime = 0;
+float kickStart = 30;
 
 bool standCommanded = true;
 bool sitCommanded = true;
@@ -87,18 +90,20 @@ float m3Goal2 = 0;
 void setup(){
    //open serial port
    Serial.begin(9600);
-   SD.begin(4);
-   myFile = SD.open("test.txt", FILE_WRITE);
+   //SD.begin(4);
+   //myFile = SD.open("test.txt", FILE_WRITE);
    // Set up IMU
    Serial.println("\n Starting IMU \n");
-   //while(!bno.begin())
-   //  Serial.println(".");
+   
+   /*
+   // REMOVE THIS STUFF IF YOU DONT WANT TO WAIT FOR IMU
+   while(!bno.begin())
+     Serial.println(".");
    Serial.println("here");
-   //bno.setExtCrystalUse(true);
-   //sensors_event_t event;
-   //bno.getEvent(&event);
+   bno.setExtCrystalUse(true);
    delay(100);
-   //rightSideUp = orientationCheck;
+   rightSideUp = orientationCheck();*/
+   // UP TO HERE FOR IMU
    
    //Initialize all motors on all legs
    Legs[0] = scottoLeg(leg0[0],leg0[1],leg0[2],motorMins[leg0[0]-1],motorMaxs[leg0[0]-1],motorMins[leg0[1]-1],motorMaxs[leg0[1]-1],motorMins[leg0[2]-1],motorMaxs[leg0[2]-1]);
@@ -120,12 +125,6 @@ void setup(){
   {
     frontM1Goal += motor_1Front[i];
     backM1Goal += motor_1Back[i];
-    //m2Goal2 = min(m2Goal2,motor_2Front[i]);
-    //m2Goal1 = max(m2Goal1,motor_2Front[i]);
-    //m3Goal = min(m3Goal,motor_3Front[i]);
-    //m2Goal1 = max(m2Goal1,motor_2Back[i]);
-    //m2Goal2 = min(m2Goal2,motor_2Back[i]);
-    //m3Goal = min(m3Goal,motor_3Back[i]);
   }
   m2Goal1 = 30;
   m3Goal1 = -90;
@@ -138,42 +137,54 @@ void setup(){
    Serial.println("\nStarting in 2 seconds");
    delay(2000);
   while (!standTest());
+  Serial.println("finish standing");
   //delay(3000);
-  //routineTime = millis(); // start of routine
-  
-  for (int i = 0; i < 4; i ++)
-  {
-    Legs[i].m1.moveToDegree(0);
-    Legs[i].m2.moveToDegree(-90);
-    Legs[i].m3.moveToDegree(0);
-  }
-  while(1);
+  routineTime = millis(); // start of routine
  }
 
 void loop(){  
-  if (millis() - routineTime > 10000){
-    myFile.close();
-    while(1);
-  }
-  else if (millis() - routineTime > 14000) {
-    writetoCard();
+  if (millis() - routineTime > 20000) {
+    if (needToInitializeRoll)
+    {
+      needToInitializeRoll = false;
+      orientationOffset = getRawOrientation();
+    }
+    if (false)
+    {
       if (bellyRoll()) {
         rollCount++;
       }
+    }
+    else{
+      if (rightSideUp){
+        if (bellyRoll()) {
+          rollCount++;
+          rightSideUp = false;
+        }
+      }
+      else
+      {
+        if (backRoll()) {
+          rollCount++;
+          rightSideUp = true;
+        }
+      }
+    }
     if (rollCount > 4) {
       //standTest(); // stop rolling
-      myFile.close();
+      //myFile.close();
       while(1);
     }
   }
   else if (millis() - routineTime > 12000) {
+    Serial.println("stowing");
     stowTest();
   }
   else if (millis() - routineTime > 10000) {
+    Serial.println("sitting");
     sitTest();
   }
   else{
-    writetoCard();
     walk();
   }
 }
@@ -197,26 +208,7 @@ void moveBackLeg(scottoLeg leg2move,uint16_t gaitTime)
   float command3 = interpolate(gaitTime,timeBetweenGaitPos*(float)gaitNum,timeBetweenGaitPos*(float)(gaitNum+1),motor_3Back[gaitNum],motor_3Back[gaitNum+1]);
   leg2move.moveAllDegree(command1,command2,command3);
 }
-/*
-void walk() {
-  uint16_t startTime = millis();
 
-  // Move each leg
-    for (int i = 0; i < 4; i+=2) {
-      moveFrontLeg(Legs[i],legTime[i]);
-    }
-    for (int i = 1; i < 4; i+=2) {
-      moveBackLeg(Legs[i],legTime[i]);
-    }
-   
-   // Increment each leg's time in the gait cycle 
-    int incrementTime = millis() - startTime;
-    Serial.print("incrementTime: ");
-    Serial.println(incrementTime);
-    for (int i = 0; i < 4; i ++) {
-      legTime[i] = (legTime[i]+incrementTime)%gaitPeriod;
-    }
-}*/
 
 void walk() {
   // Increment each leg's time in the gait cycle 
@@ -236,12 +228,10 @@ void walk() {
 }
 
 bool bellyRoll(){
-  sensors_event_t event;
-  bno.getEvent(&event);
-  float orientation = (float)event.orientation.z;
+  float orientation = getOrientation();
   if (rollStep == 0)
   {
-    if (orientation < 20 && orientation > -20){
+    if (orientation < kickStart && orientation > -kickStart){
         for (int i = 0; i < 4;i+=2)
         {
           Legs[i].m2.moveToDegree(-35);
@@ -272,12 +262,10 @@ bool bellyRoll(){
 }
 
 bool backRoll(){
-  sensors_event_t event;
-  bno.getEvent(&event);
-  float orientation = (float)event.orientation.z;
+  float orientation = getOrientation();
   if (rollStep == 0)
   {
-    if (orientation < -160 || orientation > 160)
+    if (orientation < -180+kickStart || orientation > 180 - kickStart)
     {
       for (int i = 1; i < 4;i+=2)
         {
@@ -315,9 +303,7 @@ float interpolate(float val,float minIN,float maxIN,float minOUT, float maxOUT){
 }
 
 bool orientationCheck(){
-  sensors_event_t event;
-  bno.getEvent(&event);
-  float orientation = (float)event.orientation.z;
+  float orientation = getRawOrientation();
   if (abs(orientation) < 90)
     return true;
   else
@@ -440,18 +426,25 @@ bool sitTest()
   if (sitCommanded && sitStep == 0) {
     for (int i = 0;i<4;i++)
     {
-      // Legs[i].m2.setSpeed(0.02);
-      // Legs[i].m2.setDestinationDegree(m2Goal1);
-      Legs[i].m2.moveToDegree(m2Goal1);
+      Legs[i].m1.moveToDegree(neutralPos);
     }
     sitTime = millis();
     sitStep = 1;
   }
+  
+  if (millis() - sitTime > 1000 && sitStep == 1) {
+    for (int i = 0;i<4;i++)
+    {
+      // Legs[i].m2.setSpeed(0.02);
+      // Legs[i].m2.setDestinationDegree(m2Goal1);
+      Legs[i].m2.moveToDegree(m2Goal1);
+    }
+    sitStep = 1;
+  }
 
   // go to neutral position for all motors
-  if (millis() - sitTime > 1000 && sitStep == 1) {
+  if (millis() - sitTime > 2000 && sitStep == 1) {
     for (int i=0;i<4;i++) {
-      Legs[i].m1.moveToDegree(neutralPos);
       Legs[i].m2.moveToDegree(neutralPos);
       Legs[i].m3.moveToDegree(neutralPos);
     }
@@ -491,47 +484,6 @@ bool stowTest()
   return false; // default case
 }
 
-/*
-// Function to lower legs to sit on body, then stow legs to get ready for roll
-void sit()
-{
-  float movespeed = 0.5; //degrees per millisecond
-  
-  // Lift off ground with motor 2
-  float m2Goal1 = 45;
-  scottoMotorInterface allLegMotors[4];
-  for (int i = 0; i <4;i++)
-    allLegMotors[i] = Legs[i].m2;
-  moveSlowly(4,allLegMotors,m2Goal1,movespeed);
-  
-  //Set motor 3 position
-  movespeed = 0.5;
-  scottoMotorInterface twoLegMotors[2];
-  twoLegMotors[0] = Legs[0].m3;
-  twoLegMotors[1] = Legs[2].m3;
-  moveSlowly(2,twoLegMotors,stowPos[2],movespeed);
-  twoLegMotors[0] = Legs[1].m3;
-  twoLegMotors[1] = Legs[3].m3;
-  moveSlowly(2,twoLegMotors,-stowPos[2],movespeed);
-  
-  //Set motor 2 position
-  twoLegMotors[0] = Legs[0].m2;
-  twoLegMotors[1] = Legs[2].m2;
-  moveSlowly(2,twoLegMotors,-stowPos[1],movespeed);
-  twoLegMotors[0] = Legs[1].m2;
-  twoLegMotors[1] = Legs[3].m2;
-  moveSlowly(2,twoLegMotors,stowPos[1],movespeed);
-  
-  movespeed = 0.05;
-  //Set motor 1 position
-  twoLegMotors[0] = Legs[0].m1;
-  twoLegMotors[1] = Legs[2].m1;
-  moveSlowly(2,twoLegMotors,-stowPos[0],movespeed);
-  twoLegMotors[0] = Legs[1].m1;
-  twoLegMotors[1] = Legs[3].m1;
-  moveSlowly(2,twoLegMotors,stowPos[0],movespeed);
-} */
-
 void writetoCard(){
   int Speed,Load;
   myFile.print(millis()); myFile.print(", ");
@@ -554,5 +506,22 @@ void writetoCard(){
   }
   myFile.print("\n");
 
-  }
+}
+
+float getOrientation()
+{
+  float offsettedOrientation = getRawOrientation() - orientationOffset;
+  offsettedOrientation += 360;
+  offsettedOrientation-= floor(offsettedOrientation/360.00);
+  if (offsettedOrientation > 180)
+    offsettedOrientation-=360;
+  return getRawOrientation();
+}
+
+float getRawOrientation()
+{
+  sensors_event_t event;
+  bno.getEvent(&event);
+  return (float)event.orientation.z;
+}
 

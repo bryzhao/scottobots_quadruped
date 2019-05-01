@@ -41,7 +41,7 @@ void scottoMotorInterface::moveToDigital(int command) {
   onStatus = true;
   lastCommand = command;
   lastMoveTime = millis();
-  delay(1);
+  delay(2);
 }
 
 int scottoMotorInterface::readDigital() {
