@@ -161,7 +161,11 @@ void setup(){
  }
 
 void loop(){  
-  if (millis() - routineTime > 20000) {
+  if (millis() - routineTime > 9000) {
+    if (bellyRoll()) {
+      rollCount++;
+    }
+    /* 
     if (needToInitializeRoll)
     {
       needToInitializeRoll = false;
@@ -175,31 +179,29 @@ void loop(){
     }
     else{
       if (rightSideUp){
-        if (bellyRoll()) {
+         if (bellyRoll()) {
           rollCount++;
           rightSideUp = false;
         }
       }
       else
       {
-        if (backRoll()) {
+         if (backRoll()) {
           rollCount++;
           rightSideUp = true;
         }
       }
-    }
-    if (rollCount > 4) {
-      //standTest(); // stop rolling
+    } */
+    if (rollCount > 2) {
+      while(!standTest()); // stop rolling
       //myFile.close();
       while(1);
     }
   }
-  else if (millis() - routineTime > 12000) {
-    Serial.println("stowing");
+  else if (millis() - routineTime > 6500) {
     stowTest();
   }
-  else if (millis() - routineTime > 10000) {
-    Serial.println("sitting");
+  else if (millis() - routineTime > 5000) {
     sitTest();
   }
   else{
